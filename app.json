@@ -1,0 +1,4 @@
+{
+  "name": "Vincent QuantConnect Trader",
+  "buildpacks": [{ "url": "https://github.com/unfold/heroku-buildpack-pnpm" }]
+}
