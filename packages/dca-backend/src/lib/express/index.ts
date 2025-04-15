@@ -12,6 +12,7 @@ import {
   handleDeleteScheduleRoute,
   handleEditScheduleRoute,
 } from './schedules';
+import { handleTradeRoute } from './trade';
 import { env } from '../env';
 import { serviceLogger } from '../logger';
 
@@ -36,6 +37,7 @@ export const registerRoutes = (app: Express) => {
   }
   app.use(cors(corsConfig));
 
+  app.post('/trade', handleTradeRoute);
   app.get(
     '/purchases',
     authenticateUserMiddleware,
