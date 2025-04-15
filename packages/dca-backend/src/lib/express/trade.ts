@@ -7,7 +7,7 @@ import { serviceLogger } from '../logger';
 
 export const handleTradeRoute = async (req: Request, res: Response) => {
   // just log the request
-  serviceLogger.debug(req.body);
+  serviceLogger.debug(JSON.stringify(req.body, null, 2));
 
   res.json({ success: true });
 };
