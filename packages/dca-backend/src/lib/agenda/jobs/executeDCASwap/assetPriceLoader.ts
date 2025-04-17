@@ -58,13 +58,13 @@ export function assertCoinRankingPriceData(
 }
 
 async function batchLoadFn(keys: readonly string[]): Promise<ArrayLike<number | Error>> {
-  return Promise.all(
+  const results = await Promise.all(
     keys.map(async (key) => {
       const url = new URL(
         `https://api.coinranking.com/v2/coin/${contractAddressToCoinrankingUUIDMap[key]}/price`
       );
 
-      logger.info(`Fetching top coins from CoinRanking API: ${url.toString()}`);
+      logger.info(`Fetching price data for ${key}: ${url.toString()}`);
       const response = await fetch(url, {
         headers: {
           // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -82,6 +82,7 @@ async function batchLoadFn(keys: readonly string[]): Promise<ArrayLike<number | 
       return parseFloat(data.data.price);
     })
   );
+  return results;
 }
 
 const loader = new DataLoader(batchLoadFn, {
