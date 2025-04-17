@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CreateDCA } from '@/components/create-dca';
-import { ActiveDcas } from '@/components/active-dcas';
+// import { CreateDCA } from '@/components/create-dca';
+// import { ActiveDcas } from '@/components/active-dcas';
 import { Info } from '@/components/info';
 import { Wallet } from '@/components/wallet';
 
@@ -13,7 +13,7 @@ enum Tab {
 }
 
 export const Home: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.CreateDCA);
+  const [activeTab, setActiveTab] = useState<Tab>(Tab.Wallet);
 
   return (
     <div
@@ -26,17 +26,17 @@ export const Home: React.FC = () => {
         className="bg-white p-6 shadow-sm w-full xl:max-w-4xl h-full"
       >
         <TabsList className="mb-4 flex space-x-2 rounded-md bg-gray-200 p-2 w-full">
-          <TabsTrigger value={Tab.CreateDCA}>Create DCA</TabsTrigger>
-          <TabsTrigger value={Tab.ActiveDCAs}>Active DCAs</TabsTrigger>
+          {/* <TabsTrigger value={Tab.CreateDCA}>Create DCA</TabsTrigger> */}
+          {/* <TabsTrigger value={Tab.ActiveDCAs}>Active DCAs</TabsTrigger> */}
           <TabsTrigger value={Tab.Wallet}>Wallet</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={Tab.CreateDCA}>
+        {/* <TabsContent value={Tab.CreateDCA}>
           <CreateDCA onCreate={() => setActiveTab(Tab.ActiveDCAs)} />
         </TabsContent>
         <TabsContent value={Tab.ActiveDCAs}>
           <ActiveDcas />
-        </TabsContent>
+        </TabsContent> */}
         <TabsContent value={Tab.Wallet}>
           <Wallet />
         </TabsContent>
