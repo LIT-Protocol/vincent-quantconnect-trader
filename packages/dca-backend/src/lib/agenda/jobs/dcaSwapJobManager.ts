@@ -159,7 +159,7 @@ export async function createImmediateJob(data: Omit<executeDCASwapJobDef.JobPara
     updatedAt: new Date(),
   });
 
-  job.schedule('now');
+  job.schedule('in 1 second');
   await job.save();
 
   return job;
