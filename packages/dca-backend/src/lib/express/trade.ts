@@ -23,9 +23,9 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
   serviceLogger.debug(JSON.stringify(req.body, null, 2));
 
   // let's get the order events from the request body
-  const { orderEvents } = req.body;
+  const { OrderEvents } = req.body;
 
-  serviceLogger.debug(`There are ${orderEvents.length} order events`);
+  serviceLogger.debug(`There are ${OrderEvents.length} order events`);
 
   // loop over each order event, and use vincent to make the trade
   // each order event looks like this:
@@ -56,7 +56,7 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
 */
 
   await Promise.all(
-    orderEvents.map(async (orderEvent: OrderEvent) => {
+    OrderEvents.map(async (orderEvent: OrderEvent) => {
       const { Direction, FillQuantity, OrderId, Status, Symbol } = orderEvent;
 
       const symbol = Symbol.value;
