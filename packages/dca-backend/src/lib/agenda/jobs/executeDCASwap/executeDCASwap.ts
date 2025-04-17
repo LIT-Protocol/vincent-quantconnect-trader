@@ -176,14 +176,22 @@ export async function executeDCASwap(job: JobType): Promise<void> {
 
     let fromTokenContractAddress;
     let toTokenContractAddress;
+    let fromTokenAmount;
     if (direction === 0) {
       // it's a buy, so we swap USDC for the token
       fromTokenContractAddress = USDC_CONTRACT_ADDRESS;
       toTokenContractAddress = tokenContractAddress;
+
+      // we need to calculate the swap amount.  if it's a buy, we swap USDC for the token, so we need to calculate the amount of USDC to spend
+      // get the price of the asset in USD
+      const toTokenPriceUsd = await getAssetPriceUsd(toTokenContractAddress);
+      fromTokenAmount = quantity * toTokenPriceUsd;
     } else if (direction === 1) {
       // it's a sell, so we swap the token for USDC
       fromTokenContractAddress = tokenContractAddress;
       toTokenContractAddress = USDC_CONTRACT_ADDRESS;
+      // we can just use the quantity if it's a sell
+      fromTokenAmount = quantity;
     } else {
       throw new Error(`Invalid direction: ${direction}`);
     }
@@ -220,22 +228,12 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       );
     }
 
-    // we need to calculate the swap amount.  if it's a buy, we swap USDC for the token, so we need to calculate the amount of USDC to spend
-    // if it's a sell, we can just use the quantity
-    let fromTokenAmount;
-    if (direction === 0) {
-      // buy
-      // we want to end up with quantity of the token
-      // so we need to calculate the amount of USDC to spend
-      fromTokenAmount = quantity * assetPriceUsd;
-    } else if (direction === 1) {
-      // sell
-      fromTokenAmount = quantity;
-    } else {
-      throw new Error(`Invalid direction: ${direction}`);
-    }
-
-    if (fromTokenBalance.lt(fromTokenAmount)) {
+    // from token balance is in wei / native token units, so we need to convert the amount to the same units
+    if (
+      fromTokenBalance.lt(
+        ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals.toNumber())
+      )
+    ) {
       throw new Error(
         `The ${fromTokenContractAddress} balance for account ${walletAddress} is insufficient to complete the swap - please fund this account with ${fromTokenAmount} ${fromTokenContractAddress} to swap`
       );
@@ -286,7 +284,7 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       coinAddress: toTokenContractAddress,
       name: tokenOutInfo.name,
       purchaseAmount: fromTokenAmount,
-      purchasePrice: 1,
+      purchasePrice: assetPriceUsd,
       scheduleId: _id,
       success: true,
       symbol: tokenOutInfo.name,
