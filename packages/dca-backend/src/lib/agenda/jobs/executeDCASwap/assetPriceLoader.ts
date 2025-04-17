@@ -31,6 +31,9 @@ const contractAddressToCoinrankingUUIDMap: Record<string, string> = {
   '0x940181a94A35A4569E4529A3CDfB74e38FD98631': 'cbh_u5L08',
   // LINKUSD
   '0xd403D1624DAEF243FbcBd4A80d8A6F36afFe32b2': 'VLqpJwogdhHNb',
+
+  // USDC
+  '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913': 'aKzUVe4Hh_CON',
 };
 
 export function assertCoinRankingPriceData(
@@ -60,8 +63,6 @@ async function batchLoadFn(keys: readonly string[]): Promise<ArrayLike<number | 
       const url = new URL(
         `https://api.coinranking.com/v2/coin/${contractAddressToCoinrankingUUIDMap[key]}/price`
       );
-      url.searchParams.append('blockchains[]', 'base');
-      url.searchParams.append('tags[]', 'meme');
 
       logger.info(`Fetching top coins from CoinRanking API: ${url.toString()}`);
       const response = await fetch(url, {

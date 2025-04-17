@@ -105,7 +105,7 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
         });
 
         const job = await createImmediateJob({ ...scheduleParams, vincentAppVersion: 11 });
-        serviceLogger.debug(`Created job ${JSON.stringify(job, null, 2)} for order ${OrderId}`);
+        serviceLogger.debug(`Created job ${job.attrs._id} for order ${OrderId}`);
       } catch (err) {
         serviceLogger.error(`Error creating job: ${err}`);
       }
