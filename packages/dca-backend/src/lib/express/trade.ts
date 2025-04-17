@@ -57,19 +57,20 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
 
   await Promise.all(
     OrderEvents.map(async (orderEvent: OrderEvent) => {
-      const { Direction, FillQuantity, OrderId, Status, Symbol } = orderEvent;
+      const {
+        Direction: direction,
+        FillQuantity: quantity,
+        OrderId,
+        Status: status,
+        Symbol,
+      } = orderEvent;
+
+      serviceLogger.debug(`Processing order ${JSON.stringify(orderEvent, null, 2)}`);
 
       const symbol = Symbol.value;
       // 0 = buy, 1 = sell
-      const direction = Direction;
-      const quantity = FillQuantity;
-      const status = Status;
 
       const tokenContractAddress = symbolToContractAddressMap[symbol];
-
-      serviceLogger.debug(
-        `Processing order ${OrderId} for symbol ${symbol} with quantity ${quantity}`
-      );
 
       serviceLogger.debug(`Token contract address for ${symbol} is ${tokenContractAddress}`);
 
@@ -78,7 +79,9 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
         return;
       }
 
-      if (status !== 1) {
+      // status 2 = partially filled
+      // status 3 = fully filled
+      if (status !== 2 && status !== 3) {
         serviceLogger.debug(`Skipping order ${OrderId} for symbol ${symbol} with status ${status}`);
         return;
       }
