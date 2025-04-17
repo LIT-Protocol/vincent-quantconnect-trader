@@ -229,6 +229,9 @@ export async function executeDCASwap(job: JobType): Promise<void> {
     }
 
     // from token balance is in wei / native token units, so we need to convert the amount to the same units
+    consola.log('fromTokenBalance', fromTokenBalance);
+    consola.log('fromTokenAmount', fromTokenAmount);
+    consola.log('fromTokenDecimals', fromTokenDecimals);
     if (
       fromTokenBalance.lt(ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals))
     ) {
