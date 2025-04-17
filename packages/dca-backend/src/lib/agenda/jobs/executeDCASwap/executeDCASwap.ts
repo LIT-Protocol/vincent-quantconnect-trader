@@ -38,14 +38,14 @@ async function addApproval({
   fromTokenAmount: number;
   nativeEthBalance: ethers.BigNumber;
   tokenContractAddress: string;
-  tokenDecimals: ethers.BigNumber;
+  tokenDecimals: number;
   walletAddress: string;
 }): Promise<ethers.BigNumber> {
   const approvalGasCost = await getEstimatedGasForApproval(
     baseProvider,
     BASE_CHAIN_ID,
     tokenContractAddress,
-    (fromTokenAmount * 5).toFixed(tokenDecimals.toNumber()),
+    (fromTokenAmount * 5).toFixed(tokenDecimals),
     tokenDecimals.toString(),
     walletAddress
   );
@@ -62,7 +62,7 @@ async function addApproval({
 
   const erc20ApprovalToolClient = getErc20ApprovalToolClient({ vincentAppVersion: 11 });
   const toolExecutionResult = await erc20ApprovalToolClient.execute({
-    amountIn: (fromTokenAmount * 5).toFixed(tokenDecimals.toNumber()).toString(), // Approve 5x the amount to spend so we don't wait for approval tx's every time we run
+    amountIn: (fromTokenAmount * 5).toFixed(tokenDecimals).toString(), // Approve 5x the amount to spend so we don't wait for approval tx's every time we run
     chainId: BASE_CHAIN_ID,
     pkpEthAddress: walletAddress,
     rpcUrl: BASE_RPC_URL,
@@ -107,17 +107,17 @@ async function handleSwapExecution({
   baseProvider: ethers.providers.StaticJsonRpcProvider;
   fromTokenAmount: number;
   fromTokenContractAddress: string;
-  fromTokenDecimals: ethers.BigNumber;
+  fromTokenDecimals: number;
   nativeEthBalance: ethers.BigNumber;
   toTokenContractAddress: string;
   tokenOutInfo: { decimals: ethers.BigNumber };
   walletAddress: string;
 }): Promise<void> {
   const { gasCost, swapCost } = await getEstimatedUniswapCosts({
-    amountIn: fromTokenAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
+    amountIn: fromTokenAmount.toFixed(fromTokenDecimals).toString(),
     pkpEthAddress: walletAddress,
     tokenInAddress: fromTokenContractAddress,
-    tokenInDecimals: fromTokenDecimals,
+    tokenInDecimals: ethers.BigNumber.from(fromTokenDecimals),
     tokenOutAddress: toTokenContractAddress,
     tokenOutDecimals: tokenOutInfo.decimals,
     userChainId: BASE_CHAIN_ID,
@@ -135,7 +135,7 @@ async function handleSwapExecution({
 
   const uniswapToolClient = getUniswapToolClient({ vincentAppVersion: 11 });
   const uniswapSwapToolResponse = await uniswapToolClient.execute({
-    amountIn: fromTokenAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
+    amountIn: fromTokenAmount.toFixed(fromTokenDecimals).toString(),
     chainId: BASE_CHAIN_ID,
     pkpEthAddress: walletAddress,
     rpcUrl: BASE_RPC_URL,
@@ -230,9 +230,7 @@ export async function executeDCASwap(job: JobType): Promise<void> {
 
     // from token balance is in wei / native token units, so we need to convert the amount to the same units
     if (
-      fromTokenBalance.lt(
-        ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals.toNumber())
-      )
+      fromTokenBalance.lt(ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals))
     ) {
       throw new Error(
         `The ${fromTokenContractAddress} balance for account ${walletAddress} is insufficient to complete the swap - please fund this account with ${fromTokenAmount} ${fromTokenContractAddress} to swap`
