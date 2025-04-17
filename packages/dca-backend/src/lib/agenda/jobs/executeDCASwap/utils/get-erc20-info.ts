@@ -23,7 +23,7 @@ export function getERC20Contract(address: string, provider: ethers.providers.Jso
 export const getErc20Info = async (
   userRpcProvider: ethers.providers.StaticJsonRpcProvider,
   tokenAddress: string
-): Promise<{ decimals: ethers.BigNumber; ethersContract: ethers.Contract }> => {
+): Promise<{ decimals: ethers.BigNumber; ethersContract: ethers.Contract; name: string }> => {
   const contractCode = await userRpcProvider.getCode(tokenAddress);
   if (contractCode === '0x') {
     throw new Error(`No contract code found at ${tokenAddress}`);
@@ -31,10 +31,11 @@ export const getErc20Info = async (
 
   const ethersContract = getERC20Contract(tokenAddress, userRpcProvider);
   const decimals = await ethersContract.decimals();
-
+  const name = await ethersContract.name();
   return {
     decimals,
     ethersContract,
+    name,
   };
 };
 
