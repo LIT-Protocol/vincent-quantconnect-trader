@@ -34,6 +34,9 @@ const contractAddressToCoinrankingUUIDMap: Record<string, string> = {
 
   // USDC
   '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913': 'aKzUVe4Hh_CON',
+
+  // ETHUSD
+  '0x4200000000000000000000000000000000000006': 'razxDUgYGNAdQ',
 };
 
 export function assertCoinRankingPriceData(
