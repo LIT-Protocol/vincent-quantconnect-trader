@@ -258,7 +258,9 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       toTokenName: tokenOutInfo.name,
     });
 
-    const needsApproval = existingAllowance.lt(fromTokenAmount);
+    const needsApproval = existingAllowance.lt(
+      ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals)
+    );
 
     let approvalGasCost = ethers.BigNumber.from(0);
 
