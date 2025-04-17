@@ -148,3 +148,22 @@ export async function createJob(
 
   return job;
 }
+
+// we just want to make a trade right now
+export async function createImmediateJob(data: Omit<executeDCASwapJobDef.JobParams, 'updatedAt'>) {
+  const agenda = getAgenda();
+
+  // Create a new job instance
+  const job = agenda.create<executeDCASwapJobDef.JobParams>(executeDCASwapJobDef.jobName, {
+    ...data,
+    updatedAt: new Date(),
+  });
+
+  // Currently we only allow a single DCA per walletAddress
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  job.unique({ 'data.walletAddress': data.walletAddress });
+
+  await agenda.now(executeDCASwapJobDef.jobName, data);
+
+  return job;
+}

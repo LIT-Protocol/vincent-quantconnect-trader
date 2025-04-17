@@ -2,7 +2,6 @@ import { Job } from '@whisthub/agenda';
 import consola from 'consola';
 import { ethers } from 'ethers';
 
-import { Coin, getTopBaseMemeCoin } from './baseMemeCoinLoader';
 import { getEthereumPriceUsd } from './ethPriceLoader';
 import {
   getAddressesByChainId,
@@ -20,6 +19,7 @@ export type JobParams = {
   name: string;
   purchaseAmount: number;
   purchaseIntervalHuman: string;
+  tokenContractAddress: string;
   updatedAt: Date;
   vincentAppVersion: number;
   walletAddress: string;
@@ -99,8 +99,8 @@ async function handleSwapExecution({
   approvalGasCost,
   baseProvider,
   nativeEthBalance,
+  tokenContractAddress,
   tokenOutInfo,
-  topCoin,
   walletAddress,
   WETH_ADDRESS,
   wethAmount,
@@ -111,8 +111,8 @@ async function handleSwapExecution({
   approvalGasCost: ethers.BigNumber;
   baseProvider: ethers.providers.StaticJsonRpcProvider;
   nativeEthBalance: ethers.BigNumber;
+  tokenContractAddress: string;
   tokenOutInfo: { decimals: ethers.BigNumber };
-  topCoin: Coin;
   wEthBalance: ethers.BigNumber;
   wEthDecimals: ethers.BigNumber;
   walletAddress: string;
@@ -123,7 +123,7 @@ async function handleSwapExecution({
     pkpEthAddress: walletAddress,
     tokenInAddress: WETH_ADDRESS,
     tokenInDecimals: wEthDecimals,
-    tokenOutAddress: topCoin.coinAddress,
+    tokenOutAddress: tokenContractAddress,
     tokenOutDecimals: tokenOutInfo.decimals,
     userChainId: BASE_CHAIN_ID,
     userRpcProvider: baseProvider,
@@ -149,7 +149,7 @@ async function handleSwapExecution({
     pkpEthAddress: walletAddress,
     rpcUrl: BASE_RPC_URL,
     tokenIn: WETH_ADDRESS,
-    tokenOut: topCoin.coinAddress,
+    tokenOut: tokenContractAddress,
   });
 
   consola.trace('Swap Vincent Tool Response:', uniswapSwapToolResponse);
@@ -180,13 +180,8 @@ export async function executeDCASwap(job: JobType): Promise<void> {
   try {
     const {
       _id,
-      data: { purchaseAmount, walletAddress },
+      data: { purchaseAmount, tokenContractAddress, walletAddress },
     } = job.attrs;
-
-    // Fetch top coin first to get the target token
-    consola.debug('Fetching top coin...');
-    const topCoin = await getTopBaseMemeCoin();
-    consola.debug('Got top coin:', topCoin);
 
     // FIXME: This should be type-safe
     const { WETH_ADDRESS } = getAddressesByChainId(BASE_CHAIN_ID);
@@ -205,7 +200,7 @@ export async function executeDCASwap(job: JobType): Promise<void> {
     ] = await Promise.all([
       wethContract.decimals(),
       wethContract.balanceOf(walletAddress),
-      getErc20Info(baseProvider, topCoin.coinAddress),
+      getErc20Info(baseProvider, tokenContractAddress),
       getEthereumPriceUsd(),
       getExistingUniswapAllowance(
         BASE_CHAIN_ID,
@@ -267,8 +262,8 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       approvalGasCost,
       baseProvider,
       nativeEthBalance,
+      tokenContractAddress,
       tokenOutInfo,
-      topCoin,
       walletAddress,
       wethAmount,
       wEthBalance,
@@ -278,18 +273,18 @@ export async function executeDCASwap(job: JobType): Promise<void> {
     const purchase = new PurchasedCoin({
       purchaseAmount,
       walletAddress,
-      coinAddress: topCoin.coinAddress,
-      name: topCoin.name,
-      purchasePrice: topCoin.price,
+      coinAddress: tokenContractAddress,
+      name: tokenContractAddress,
+      purchasePrice: 1,
       scheduleId: _id,
       success: true,
-      symbol: topCoin.symbol,
+      symbol: tokenContractAddress,
       txHash: swapHash,
     });
     await purchase.save();
 
     consola.debug(
-      `Successfully created purchase record for ${topCoin.symbol} with tx hash ${swapHash}`
+      `Successfully created purchase record for ${tokenContractAddress} with tx hash ${swapHash}`
     );
   } catch (e) {
     // Catch-and-rethrow is usually an anti-pattern, but Agenda doesn't log failed job reasons to console
