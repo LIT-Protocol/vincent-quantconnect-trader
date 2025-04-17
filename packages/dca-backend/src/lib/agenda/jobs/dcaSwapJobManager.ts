@@ -159,11 +159,8 @@ export async function createImmediateJob(data: Omit<executeDCASwapJobDef.JobPara
     updatedAt: new Date(),
   });
 
-  // Currently we only allow a single DCA per walletAddress
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  job.unique({ 'data.walletAddress': data.walletAddress });
-
-  await agenda.now(executeDCASwapJobDef.jobName, data);
+  job.schedule('now');
+  await job.save();
 
   return job;
 }
