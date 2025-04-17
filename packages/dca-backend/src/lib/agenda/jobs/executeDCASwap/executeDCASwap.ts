@@ -190,8 +190,9 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       // it's a sell, so we swap the token for USDC
       fromTokenContractAddress = tokenContractAddress;
       toTokenContractAddress = USDC_CONTRACT_ADDRESS;
-      // we can just use the quantity if it's a sell
-      fromTokenAmount = quantity;
+      // we can just use the quantity if it's a sell.  but, quantconnect quantity comes in negative if it's a sell
+      // so we need to make it positive
+      fromTokenAmount = Math.abs(quantity);
     } else {
       throw new Error(`Invalid direction: ${direction}`);
     }
@@ -232,6 +233,10 @@ export async function executeDCASwap(job: JobType): Promise<void> {
     consola.log('fromTokenBalance', fromTokenBalance);
     consola.log('fromTokenAmount', fromTokenAmount);
     consola.log('fromTokenDecimals', fromTokenDecimals);
+
+    // if fromTokenAmount has more decimals than fromTokenDecimals, we need to truncate it, otherwise parseUnits will throw an error
+    fromTokenAmount = parseFloat(fromTokenAmount.toFixed(fromTokenDecimals));
+
     if (
       fromTokenBalance.lt(ethers.utils.parseUnits(fromTokenAmount.toString(), fromTokenDecimals))
     ) {
