@@ -3,12 +3,7 @@ import consola from 'consola';
 import { ethers } from 'ethers';
 
 import { getAssetPriceUsd } from './assetPriceLoader';
-import {
-  getAddressesByChainId,
-  getErc20Info,
-  getEstimatedGasForApproval,
-  getEstimatedUniswapCosts,
-} from './utils';
+import { getErc20Info, getEstimatedGasForApproval, getEstimatedUniswapCosts } from './utils';
 import { getERC20Contract, getExistingUniswapAllowance } from './utils/get-erc20-info';
 import { getErc20ApprovalToolClient, getUniswapToolClient } from './vincentTools';
 import { env } from '../../../env';
@@ -16,10 +11,10 @@ import { PurchasedCoin } from '../../../mongo/models/PurchasedCoin';
 
 export type JobType = Job<JobParams>;
 export type JobParams = {
-  fromTokenContractAddress: string;
+  direction: number;
   name: string;
-  purchaseAmount: number;
-  toTokenContractAddress: string;
+  quantity: number;
+  tokenContractAddress: string;
   updatedAt: Date;
   vincentAppVersion: number;
   walletAddress: string;
@@ -29,17 +24,19 @@ const { BASE_RPC_URL } = env;
 
 const BASE_CHAIN_ID = '8453';
 
+const USDC_CONTRACT_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+
 async function addApproval({
   baseProvider,
+  fromTokenAmount,
   nativeEthBalance,
-  purchaseAmount,
   tokenContractAddress,
   tokenDecimals,
   walletAddress,
 }: {
   baseProvider: ethers.providers.StaticJsonRpcProvider;
+  fromTokenAmount: number;
   nativeEthBalance: ethers.BigNumber;
-  purchaseAmount: number;
   tokenContractAddress: string;
   tokenDecimals: ethers.BigNumber;
   walletAddress: string;
@@ -48,7 +45,7 @@ async function addApproval({
     baseProvider,
     BASE_CHAIN_ID,
     tokenContractAddress,
-    (purchaseAmount * 5).toFixed(tokenDecimals.toNumber()),
+    (fromTokenAmount * 5).toFixed(tokenDecimals.toNumber()),
     tokenDecimals.toString(),
     walletAddress
   );
@@ -65,7 +62,7 @@ async function addApproval({
 
   const erc20ApprovalToolClient = getErc20ApprovalToolClient({ vincentAppVersion: 11 });
   const toolExecutionResult = await erc20ApprovalToolClient.execute({
-    amountIn: (purchaseAmount * 5).toFixed(tokenDecimals.toNumber()).toString(), // Approve 5x the amount to spend so we don't wait for approval tx's every time we run
+    amountIn: (fromTokenAmount * 5).toFixed(tokenDecimals.toNumber()).toString(), // Approve 5x the amount to spend so we don't wait for approval tx's every time we run
     chainId: BASE_CHAIN_ID,
     pkpEthAddress: walletAddress,
     rpcUrl: BASE_RPC_URL,
@@ -98,26 +95,26 @@ async function addApproval({
 async function handleSwapExecution({
   approvalGasCost,
   baseProvider,
+  fromTokenAmount,
   fromTokenContractAddress,
   fromTokenDecimals,
   nativeEthBalance,
-  purchaseAmount,
   tokenOutInfo,
   toTokenContractAddress,
   walletAddress,
 }: {
   approvalGasCost: ethers.BigNumber;
   baseProvider: ethers.providers.StaticJsonRpcProvider;
+  fromTokenAmount: number;
   fromTokenContractAddress: string;
   fromTokenDecimals: ethers.BigNumber;
   nativeEthBalance: ethers.BigNumber;
-  purchaseAmount: number;
   toTokenContractAddress: string;
   tokenOutInfo: { decimals: ethers.BigNumber };
   walletAddress: string;
 }): Promise<void> {
   const { gasCost, swapCost } = await getEstimatedUniswapCosts({
-    amountIn: purchaseAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
+    amountIn: fromTokenAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
     pkpEthAddress: walletAddress,
     tokenInAddress: fromTokenContractAddress,
     tokenInDecimals: fromTokenDecimals,
@@ -138,7 +135,7 @@ async function handleSwapExecution({
 
   const uniswapToolClient = getUniswapToolClient({ vincentAppVersion: 11 });
   const uniswapSwapToolResponse = await uniswapToolClient.execute({
-    amountIn: purchaseAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
+    amountIn: fromTokenAmount.toFixed(fromTokenDecimals.toNumber()).toString(),
     chainId: BASE_CHAIN_ID,
     pkpEthAddress: walletAddress,
     rpcUrl: BASE_RPC_URL,
@@ -174,11 +171,22 @@ export async function executeDCASwap(job: JobType): Promise<void> {
   try {
     const {
       _id,
-      data: { fromTokenContractAddress, purchaseAmount, toTokenContractAddress, walletAddress },
+      data: { direction, quantity, tokenContractAddress, walletAddress },
     } = job.attrs;
 
-    // FIXME: This should be type-safe
-    const { WETH_ADDRESS } = getAddressesByChainId(BASE_CHAIN_ID);
+    let fromTokenContractAddress;
+    let toTokenContractAddress;
+    if (direction === 0) {
+      // it's a buy, so we swap USDC for the token
+      fromTokenContractAddress = USDC_CONTRACT_ADDRESS;
+      toTokenContractAddress = tokenContractAddress;
+    } else if (direction === 1) {
+      // it's a sell, so we swap the token for USDC
+      fromTokenContractAddress = tokenContractAddress;
+      toTokenContractAddress = USDC_CONTRACT_ADDRESS;
+    } else {
+      throw new Error(`Invalid direction: ${direction}`);
+    }
 
     const baseProvider = new ethers.providers.StaticJsonRpcProvider(BASE_RPC_URL);
 
@@ -200,7 +208,7 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       getAssetPriceUsd(fromTokenContractAddress),
       getExistingUniswapAllowance(
         BASE_CHAIN_ID,
-        getERC20Contract(WETH_ADDRESS!, baseProvider),
+        getERC20Contract(fromTokenContractAddress, baseProvider),
         walletAddress
       ),
       baseProvider.getBalance(walletAddress),
@@ -212,17 +220,32 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       );
     }
 
-    if (fromTokenBalance.lt(purchaseAmount)) {
+    // we need to calculate the swap amount.  if it's a buy, we swap USDC for the token, so we need to calculate the amount of USDC to spend
+    // if it's a sell, we can just use the quantity
+    let fromTokenAmount;
+    if (direction === 0) {
+      // buy
+      // we want to end up with quantity of the token
+      // so we need to calculate the amount of USDC to spend
+      fromTokenAmount = quantity * assetPriceUsd;
+    } else if (direction === 1) {
+      // sell
+      fromTokenAmount = quantity;
+    } else {
+      throw new Error(`Invalid direction: ${direction}`);
+    }
+
+    if (fromTokenBalance.lt(fromTokenAmount)) {
       throw new Error(
-        `The ${fromTokenContractAddress} balance for account ${walletAddress} is insufficient to complete the swap - please fund this account with ${purchaseAmount} ${fromTokenContractAddress} to swap`
+        `The ${fromTokenContractAddress} balance for account ${walletAddress} is insufficient to complete the swap - please fund this account with ${fromTokenAmount} ${fromTokenContractAddress} to swap`
       );
     }
 
     consola.log('Job details', {
       assetPriceUsd,
+      fromTokenAmount,
       fromTokenContractAddress,
       fromTokenName,
-      purchaseAmount,
       toTokenContractAddress,
       walletAddress,
       existingAllowance: existingAllowance.toString(),
@@ -231,15 +254,15 @@ export async function executeDCASwap(job: JobType): Promise<void> {
       toTokenName: tokenOutInfo.name,
     });
 
-    const needsApproval = existingAllowance.lt(purchaseAmount);
+    const needsApproval = existingAllowance.lt(fromTokenAmount);
 
     let approvalGasCost = ethers.BigNumber.from(0);
 
     if (needsApproval) {
       approvalGasCost = await addApproval({
         baseProvider,
+        fromTokenAmount,
         nativeEthBalance,
-        purchaseAmount,
         walletAddress,
         tokenContractAddress: fromTokenContractAddress,
         tokenDecimals: fromTokenDecimals,
@@ -249,20 +272,20 @@ export async function executeDCASwap(job: JobType): Promise<void> {
     const swapHash = await handleSwapExecution({
       approvalGasCost,
       baseProvider,
+      fromTokenAmount,
       fromTokenContractAddress,
       fromTokenDecimals,
       nativeEthBalance,
-      purchaseAmount,
       tokenOutInfo,
       toTokenContractAddress,
       walletAddress,
     });
     // Create a purchase record with all required fields
     const purchase = new PurchasedCoin({
-      purchaseAmount,
       walletAddress,
       coinAddress: toTokenContractAddress,
       name: tokenOutInfo.name,
+      purchaseAmount: fromTokenAmount,
       purchasePrice: 1,
       scheduleId: _id,
       success: true,

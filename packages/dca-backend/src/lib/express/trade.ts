@@ -18,8 +18,6 @@ const symbolToContractAddressMap: Record<string, string> = {
   XCNUSD: '0x9c632E6Aaa3eA73f91554f8A3cB2ED2F29605e0C',
 };
 
-const USDC_CONTRACT_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-
 export const handleTradeRoute = async (req: Request, res: Response) => {
   // just log the request
   serviceLogger.debug(JSON.stringify(req.body, null, 2));
@@ -88,32 +86,21 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
         return;
       }
 
-      let toTokenContractAddress;
-      let fromTokenContractAddress;
       if (!orderTokenContractAddress) {
         serviceLogger.error(`No contract address found for symbol ${symbol}`);
         return;
       }
 
-      if (direction === 0) {
-        // buy
-        toTokenContractAddress = orderTokenContractAddress;
-        fromTokenContractAddress = USDC_CONTRACT_ADDRESS;
-      } else if (direction === 1) {
-        // sell
-        toTokenContractAddress = USDC_CONTRACT_ADDRESS;
-        fromTokenContractAddress = orderTokenContractAddress;
-      } else {
+      if (direction !== 0 && direction !== 1) {
         serviceLogger.error(`Invalid direction ${direction} for order ${OrderId}`);
         return;
       }
 
-      serviceLogger.debug(`Making buy order ${OrderId} for ${symbol} with quantity ${quantity}`);
       try {
         const scheduleParams = ScheduleParamsSchema.parse({
-          fromTokenContractAddress,
-          toTokenContractAddress,
-          purchaseAmount: quantity,
+          direction,
+          quantity,
+          tokenContractAddress: orderTokenContractAddress,
           walletAddress: USER_PKP_ADDRESS,
         });
 

@@ -2,12 +2,12 @@ import { Types } from 'mongoose';
 import { z } from 'zod';
 
 export const ScheduleParamsSchema = z.object({
-  fromTokenContractAddress: z.string().refine((val) => /^0x[a-fA-F0-9]{40}$/.test(val), {
-    message: 'Invalid Ethereum contract address',
+  direction: z.number().refine((val) => val === 0 || val === 1, {
+    message: 'Invalid direction',
   }),
   name: z.string().default('QCTrader'),
-  purchaseAmount: z.number(),
-  toTokenContractAddress: z.string().refine((val) => /^0x[a-fA-F0-9]{40}$/.test(val), {
+  quantity: z.number(),
+  tokenContractAddress: z.string().refine((val) => /^0x[a-fA-F0-9]{40}$/.test(val), {
     message: 'Invalid Ethereum contract address',
   }),
   walletAddress: z.string().refine((val) => /^0x[a-fA-F0-9]{40}$/.test(val), {
