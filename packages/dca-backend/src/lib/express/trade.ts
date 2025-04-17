@@ -92,7 +92,7 @@ export const handleTradeRoute = async (req: Request, res: Response) => {
         try {
           const scheduleParams = ScheduleParamsSchema.parse({
             tokenContractAddress,
-            purchaseAmount: quantity,
+            purchaseAmount: quantity.toString(),
             purchaseIntervalHuman: 'none',
             walletAddress: userPkpAddress,
           });
