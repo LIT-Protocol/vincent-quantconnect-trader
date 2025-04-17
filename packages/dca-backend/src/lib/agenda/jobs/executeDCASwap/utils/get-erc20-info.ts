@@ -47,7 +47,9 @@ export async function getExistingUniswapAllowance(
   const { UNISWAP_V3_ROUTER } = getAddressesByChainId(chainId);
 
   const currentAllowance = await contract.allowance(userAddress, UNISWAP_V3_ROUTER);
-  console.log(`Current router allowance: ${ethers.utils.formatEther(currentAllowance)} WETH`);
+  console.log(
+    `Current router allowance for ${contract.address}: ${ethers.utils.formatEther(currentAllowance)}`
+  );
 
   return currentAllowance;
 }
